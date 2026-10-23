@@ -2,6 +2,14 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
           xmlns:tools="http://schemas.android.com/tools">
 
+    <!--
+        存档写入 /storage/emulated/0/bingbaihanji/mgba/。
+        Android 11+ 访问公共目录需要“所有文件访问权限”，由用户在系统中手动授予。
+    -->
+    <uses-permission
+            android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
+            tools:ignore="ScopedStorage"/>
+
     <application
             android:name=".MgbaApplication"
             android:allowBackup="true"

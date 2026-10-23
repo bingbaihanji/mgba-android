@@ -28,6 +28,7 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.unit.dp
 import com.mgba.bingbaihanji.core.settings.SpeedPresets
 import com.mgba.bingbaihanji.core.video.displayName
+import com.mgba.bingbaihanji.platform.android.storage.AndroidSaveStorage
 import java.io.File
 import java.util.Locale
 import kotlin.math.roundToInt
@@ -127,6 +128,7 @@ fun InputSettingsScreen(onBack: () -> Unit) {
 fun MiscSettingsScreen(onBack: () -> Unit) {
     val store = LocalSettingsStore.current
     val settings by store.settings.collectAsState()
+    val context = LocalContext.current
 
     SettingsScaffold("其他", onBack) {
         SettingSection("游戏速度")
@@ -180,6 +182,22 @@ fun MiscSettingsScreen(onBack: () -> Unit) {
             checked = settings.confirmOnClose,
             onChange = { store.update { s -> s.copy(confirmOnClose = it) } },
         )
+
+        SettingSection("存档目录")
+        SettingInfo(
+            title = "存档根目录",
+            value = AndroidSaveStorage.rootDir(context).absolutePath,
+            monospace = true,
+        )
+        if (AndroidSaveStorage.canUsePublicRoot()) {
+            SettingInfo(title = "权限状态", value = "已授予所有文件访问权限")
+        } else {
+            SettingAction(
+                title = "授予所有文件访问权限",
+                subtitle = "用于写入 /storage/emulated/0/bingbaihanji/mgba/",
+                onClick = { AndroidSaveStorage.openAccessSettings(context) },
+            )
+        }
     }
 }
 
@@ -333,15 +351,22 @@ fun RomInfoScreen(
                 monospace = true,
             )
             SettingInfo(
-                title = "即时存档目录",
-                value = File(context.filesDir, "states").absolutePath,
+                title = "存档根目录",
+                value = AndroidSaveStorage.rootDir(context).absolutePath,
                 monospace = true,
             )
             SettingInfo(
-                title = "电池存档目录",
-                value = File(context.filesDir, "saves").absolutePath,
-                monospace = true,
+                title = "目录结构",
+                value = "每个 ROM 一个子文件夹，内含 game.sav（游戏内存档）、" +
+                        "game.rtc 与 slot0.state…slot10.state（即时存档）。",
             )
+            if (!AndroidSaveStorage.canUsePublicRoot()) {
+                SettingInfo(
+                    title = "权限提示",
+                    value = "未授予“所有文件访问权限”，当前暂用应用专属目录；" +
+                            "授权后会写入 /storage/emulated/0/bingbaihanji/mgba/。",
+                )
+            }
         } else {
             SettingSection("游戏")
             SettingInfo(title = "名称", value = romInfo.title.ifBlank { "未命名 ROM" })
@@ -382,14 +407,21 @@ fun RomInfoScreen(
 
             SettingSection("存档位置")
             SettingInfo(
-                title = "即时存档目录",
-                value = File(context.filesDir, "states").absolutePath,
+                title = "存档根目录",
+                value = AndroidSaveStorage.rootDir(context).absolutePath,
                 monospace = true,
             )
             SettingInfo(
-                title = "电池存档目录",
-                value = File(context.filesDir, "saves").absolutePath,
+                title = "当前游戏存档目录",
+                value = romInfo.saveDirectory.ifEmpty {
+                    AndroidSaveStorage.rootDir(context).absolutePath
+                },
                 monospace = true,
+            )
+            SettingInfo(
+                title = "文件说明",
+                value = "game.sav / game.rtc（游戏内存档与时钟）· " +
+                        "slot0.state…slot10.state（即时存档）",
             )
 
             SettingSection("操作")

@@ -38,6 +38,19 @@ class AndroidRomCatalog(context: Context) : RomCatalog {
             ?: emptyList()
     }
 
+    /**
+     * 按 ROM 标识解析展示名，供加载页与存档文件夹命名使用。
+     *
+     * 与 [listRoms] 使用同一套优先级；缓存文件不存在时返回兜底名称。
+     */
+    fun displayNameFor(id: String): String {
+        if (id.isEmpty() || id.contains('/') || id.contains('\\')) {
+            return "未知游戏"
+        }
+        val file = File(AndroidRomRepository.romCacheDir(appContext), "$id.gba")
+        return if (file.isFile) resolveDisplayName(file, id) else "未知游戏 ${id.take(8)}"
+    }
+
     override fun delete(id: String): Boolean {
         // id 来自文件名，仍显式拒绝路径分隔符，避免任何形式的目录穿越。
         if (id.isEmpty() || id.contains('/') || id.contains('\\')) return false

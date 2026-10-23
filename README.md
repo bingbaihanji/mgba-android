@@ -27,8 +27,12 @@ Android 层只负责 SAF/Intent、SurfaceView、AudioTrack 与生命周期胶水
 
 - **游戏库**：导入单个 ROM 或 ZIP（自动解压第一个 GBA/GB/GBC 条目），
   支持重命名、删除与删除关联存档。
-- **即时存档**：多个存档槽位、自动存档、退出时自动保存。
-- **电池存档**：SRAM 与 RTC 按 ROM 的 SHA-256 隔离，退出、暂停与每 60 秒定时落盘。
+- **存档目录**：默认写入 `/storage/emulated/0/bingbaihanji/mgba/`，
+  每个 ROM 加载后自动创建同名子文件夹，游戏内存档、RTC 与即时存档都放在其中。
+  需要授予「所有文件访问权限」；未授权时暂用应用专属外部目录。
+- **即时存档**：多个存档槽位、自动存档、退出时自动保存，文件为 `slot{0..10}.state`。
+- **电池存档**：SRAM（`game.sav`）与 RTC（`game.rtc`）按 ROM 隔离，
+  退出、暂停与每 60 秒定时落盘。
 - **金手指**：GameShark / Action Replay、CodeBreaker、Raw 直写与自动检测；
   兼容 My Boy 的 Raw 写法（`ADDR VALUE`、`ADDRVALUE`、`ADDR:VALUE`）。
 - **变速**：0.2x 慢放到 16x 快进，共 14 个常用档位（含 1.25x、1.75x），
@@ -41,6 +45,33 @@ Android 层只负责 SAF/Intent、SurfaceView、AudioTrack 与生命周期胶水
   着色器、分辨率、音量、采样率、ROM 名称/路径、系统信息、核心信息与内存；
   每个分组使用独立颜色，全部关闭时零开销。
 - **设置中心**：视频、音频、输入、ROM 信息、系统信息、其他、调试、关于。
+
+## 存档位置
+
+首次启动时会请求「所有文件访问权限」（Android 11+ 写入公共目录所必需）。
+授予后存档根目录为：
+
+```text
+/storage/emulated/0/bingbaihanji/mgba/
+```
+
+每次加载 ROM 后会在该目录下创建一个以 ROM 命名的子文件夹，例如：
+
+```text
+/storage/emulated/0/bingbaihanji/mgba/宝可梦 绿宝石/
+    .mgba-rom        # 存档标识（完整 SHA-256）
+    game.sav         # 游戏内存档（SRAM）
+    game.rtc         # RTC 时钟数据
+    slot0.state      # 即时存档槽位 0
+    ...
+    slot10.state     # 自动存档槽位
+```
+
+- 同名 ROM 会在文件夹名后追加 SHA-256 前缀，避免互相覆盖。
+- 未授予权限时会临时写入
+  `Android/data/com.mgba.bingbaihanji/files/saves/`，结构完全相同；
+  授权后重新打开游戏即可使用公共目录。
+- 旧版本保存在应用私有目录的存档，会在首次加载对应 ROM 时自动迁移。
 
 ## 环境要求
 

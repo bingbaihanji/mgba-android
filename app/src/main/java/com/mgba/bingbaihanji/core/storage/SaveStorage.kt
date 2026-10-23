@@ -1,5 +1,6 @@
 package com.mgba.bingbaihanji.core.storage
 
+import java.io.File
 import java.io.IOException
 
 /**
@@ -23,6 +24,28 @@ data class SlotStatus(
  * 对 SRAM/RTC 是完整 SHA-256。
  */
 interface SaveStorage {
+
+    /**
+     * 为新加载的 ROM 准备存档位置。
+     *
+     * 文件实现用它创建「一个 ROM 一个文件夹」的目录；只按 [romId] 存取字节的
+     * 实现（测试用内存实现等）可以保持默认的空实现。
+     *
+     * @param romId SHA-256 前 16 位，用于即时存档
+     * @param sha256 完整 SHA-256，用于电池存档与 RTC
+     * @param displayName ROM 展示名，用于生成文件夹名
+     */
+    fun prepareRom(romId: String, sha256: String, displayName: String) {}
+
+    /** 当前 ROM 的存档目录；不支持目录布局的实现返回 null。 */
+    fun romDirectory(romId: String): File? = null
+
+    /**
+     * 删除 ROM 的全部存档文件。
+     *
+     * 默认实现依赖调用方逐项删除；文件实现会连同空文件夹一起清理。
+     */
+    fun deleteRomData(romId: String) {}
 
     /**
      * 读取即时存档原始字节。

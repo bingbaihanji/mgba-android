@@ -55,8 +55,9 @@ import com.mgba.bingbaihanji.core.storage.SavestateLoadResult
 import com.mgba.bingbaihanji.core.video.displayName
 import com.mgba.bingbaihanji.platform.android.audio.AudioTrackSink
 import com.mgba.bingbaihanji.platform.android.emulation.JniEmulatorCore
+import com.mgba.bingbaihanji.platform.android.storage.AndroidRomCatalog
 import com.mgba.bingbaihanji.platform.android.storage.AndroidRomRepository
-import com.mgba.bingbaihanji.platform.android.storage.FileSaveStorage
+import com.mgba.bingbaihanji.platform.android.storage.AndroidSaveStorage
 import com.mgba.bingbaihanji.platform.android.video.GameSurfaceView
 import com.mgba.bingbaihanji.ui.GameMenuOverlay
 import com.mgba.bingbaihanji.ui.SaveSlotDialog
@@ -184,7 +185,7 @@ class GameActivity : ComponentActivity() {
         gameSession = GameSession(
             core = core,
             audioSinkFactory = { sampleRate -> AudioTrackSink(sampleRate) },
-            saveStorage = FileSaveStorage(filesDir),
+            saveStorage = AndroidSaveStorage.create(this),
             settings = settingsStore,
             coreOptionsStore = coreOptionStore,
             cheatStore = cheatStore,
@@ -269,6 +270,7 @@ class GameActivity : ComponentActivity() {
                                     coreVersion = gameSession.coreVersion,
                                     fps = gameSession.avInfo.fps,
                                     sampleRate = gameSession.avInfo.sampleRate.toInt(),
+                                    saveDirectory = gameSession.saveDirectory,
                                 ),
                             )
                         } else {
@@ -428,7 +430,14 @@ class GameActivity : ComponentActivity() {
                 fail("Failed to prepare ROM: ${e.message}")
                 return@launch
             }
-            val result = gameSession.load(romFile, sha256)
+            // 缓存文件以 SHA-256 命名，展示名要从索引/头部重新解析；
+            // 同一个名称也用作存档文件夹名。
+            val displayName = withContext(Dispatchers.IO) {
+                AndroidRomCatalog(this@GameActivity).displayNameFor(sha256)
+            }
+            romTitle = displayName
+
+            val result = gameSession.load(romFile, sha256, displayName)
             // 以会话内部的 romId 为准，避免 UI 重复实现截断规则。
             romId = gameSession.romId
 

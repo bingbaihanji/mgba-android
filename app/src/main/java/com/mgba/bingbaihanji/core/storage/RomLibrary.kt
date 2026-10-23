@@ -33,6 +33,8 @@ class RomLibrary(
             }
             saveStorage.deleteBatterySave(id)
             saveStorage.deleteRtc(id)
+            // 文件实现会连同该 ROM 的存档文件夹一起删除。
+            saveStorage.deleteRomData(id)
             // 金手指以空列表覆盖，避免 CheatStore 再多一个删除方法。
             cheatStore.save(romId, emptyList())
         }

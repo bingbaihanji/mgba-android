@@ -25,4 +25,6 @@ data class RomInfoUi(
     val fps: Double,
     /** 核心输出采样率（GBA 通常为 32768 Hz）。 */
     val sampleRate: Int,
+    /** 当前 ROM 的存档文件夹；存储实现不支持目录布局时为空。 */
+    val saveDirectory: String = "",
 )

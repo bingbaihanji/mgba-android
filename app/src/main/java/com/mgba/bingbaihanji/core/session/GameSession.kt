@@ -53,7 +53,7 @@ class GameSession(
     /** 按核心采样率创建平台音频设备。 */
     private val audioSinkFactory: (sampleRate: Int) -> AudioSink,
     /** 存档字节存储；会话内部据此创建存档仓库。 */
-    saveStorage: SaveStorage,
+    private val saveStorage: SaveStorage,
     private val settings: SettingsStore,
     /** 核心选项的持久化值；游戏加载后自动应用。 */
     private val coreOptionsStore: CoreOptionStore,
@@ -125,6 +125,10 @@ class GameSession(
     var romId: String = ""
         private set
 
+    /** 当前 ROM 的存档文件夹；存储实现不支持目录布局时为空字符串。 */
+    val saveDirectory: String
+        get() = saveStorage.romDirectory(romId.ifEmpty { romSha256 })?.absolutePath ?: ""
+
     /** 核心上报的音视频时序。 */
     val avInfo: AvInfo get() = core.avInfo
 
@@ -144,11 +148,22 @@ class GameSession(
     /**
      * 初始化核心、加载 ROM，并在有 SHA-256 时恢复 SRAM/RTC。
      * 必须在 [start] 之前调用。
+     *
+     * [displayName] 用于创建按 ROM 命名的存档文件夹；缺省时使用文件名。
      */
-    suspend fun load(romFile: File, sha256: String): LoadResult {
+    suspend fun load(
+        romFile: File,
+        sha256: String,
+        displayName: String = romFile.nameWithoutExtension,
+    ): LoadResult {
         romPath = romFile.absolutePath
         romSha256 = sha256
         romId = sha256.take(ROM_ID_LENGTH)
+
+        // 先在外部存储建立该 ROM 的存档文件夹（必要时迁移旧存档）。
+        withContext(Dispatchers.IO) {
+            saveStorage.prepareRom(romId, sha256, displayName)
+        }
 
         val init = withContext(Dispatchers.IO) { core.initialize() }
         if (init.isFailure) {

@@ -7,12 +7,15 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
 import com.mgba.bingbaihanji.core.storage.RomCatalog
 import com.mgba.bingbaihanji.core.storage.RomLibrary
 import com.mgba.bingbaihanji.platform.android.storage.AndroidRomCatalog
-import com.mgba.bingbaihanji.platform.android.storage.FileSaveStorage
+import com.mgba.bingbaihanji.platform.android.storage.AndroidSaveStorage
 import com.mgba.bingbaihanji.ui.GameListScreen
 import com.mgba.bingbaihanji.ui.SettingsNav
 import com.mgba.bingbaihanji.ui.settings.LocalKeyMapStore
@@ -43,7 +46,7 @@ class MainActivity : ComponentActivity() {
     private val romLibrary by lazy {
         RomLibrary(
             catalog = romCatalog,
-            saveStorage = FileSaveStorage(filesDir),
+            saveStorage = AndroidSaveStorage.create(this),
             cheatStore = (application as MgbaApplication).cheatStore,
         )
     }
@@ -78,6 +81,41 @@ private fun AppNavigation(
 ) {
     var screen by remember { mutableStateOf<Screen>(Screen.GameList) }
     val context = LocalContext.current
+
+    // Android 11+ 写入公共目录需要“所有文件访问权限”；
+    // 未授权时先提示一次，并说明会退回应用专属目录。
+    var showStorageAccessDialog by remember {
+        mutableStateOf(!AndroidSaveStorage.canUsePublicRoot())
+    }
+
+    if (showStorageAccessDialog) {
+        AlertDialog(
+            onDismissRequest = { showStorageAccessDialog = false },
+            title = { Text("存档目录权限") },
+            text = {
+                Text(
+                    "存档将写入 /storage/emulated/0/bingbaihanji/mgba/。\n" +
+                            "请授予“所有文件访问权限”。未授权时会临时使用应用专属目录，"
+                            + "授权后新建的游戏会直接写入公共目录。"
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showStorageAccessDialog = false
+                        AndroidSaveStorage.openAccessSettings(context)
+                    }
+                ) {
+                    Text("去授权")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showStorageAccessDialog = false }) {
+                    Text("稍后")
+                }
+            },
+        )
+    }
 
     val romPicker = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument()
