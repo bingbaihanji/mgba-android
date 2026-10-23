@@ -33,6 +33,7 @@ enum class SettingsCategory(
     RomInfo("ROM 信息", "当前游戏文件、校验值与存档位置", Icons.AutoMirrored.Filled.List),
     SystemInfo("系统信息", "应用、核心、设备与屏幕数据", Icons.Default.Phone),
     Misc("其他", "游戏速度、存档与启动行为", Icons.Default.Settings),
+    Debug("调试", "浮层开关：帧率、音频、ROM、系统与内存", Icons.Default.Warning),
     About("关于", "版本、开源地址与联系方式", Icons.Default.Info),
 }
 

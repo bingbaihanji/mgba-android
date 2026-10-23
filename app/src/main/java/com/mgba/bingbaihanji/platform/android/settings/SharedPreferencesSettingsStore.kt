@@ -55,6 +55,15 @@ class SharedPreferencesSettingsStore(context: Context) : SettingsStore {
         fullScreenImmersive = prefs.getBoolean("fullScreenImmersive", true),
         showFps = prefs.getBoolean("showFps", false),
         showSpeedStatus = prefs.getBoolean("showSpeedStatus", false),
+        showShaderInfo = prefs.getBoolean("showShaderInfo", false),
+        showResolutionInfo = prefs.getBoolean("showResolutionInfo", false),
+        showVolumeInfo = prefs.getBoolean("showVolumeInfo", false),
+        showSampleRateInfo = prefs.getBoolean("showSampleRateInfo", false),
+        showRomName = prefs.getBoolean("showRomName", false),
+        showRomPath = prefs.getBoolean("showRomPath", false),
+        showSystemInfo = prefs.getBoolean("showSystemInfo", false),
+        showCoreInfo = prefs.getBoolean("showCoreInfo", false),
+        showMemoryInfo = prefs.getBoolean("showMemoryInfo", false),
     )
 
     private fun save(s: AppSettings) {
@@ -74,6 +83,15 @@ class SharedPreferencesSettingsStore(context: Context) : SettingsStore {
             .putBoolean("fullScreenImmersive", s.fullScreenImmersive)
             .putBoolean("showFps", s.showFps)
             .putBoolean("showSpeedStatus", s.showSpeedStatus)
+            .putBoolean("showShaderInfo", s.showShaderInfo)
+            .putBoolean("showResolutionInfo", s.showResolutionInfo)
+            .putBoolean("showVolumeInfo", s.showVolumeInfo)
+            .putBoolean("showSampleRateInfo", s.showSampleRateInfo)
+            .putBoolean("showRomName", s.showRomName)
+            .putBoolean("showRomPath", s.showRomPath)
+            .putBoolean("showSystemInfo", s.showSystemInfo)
+            .putBoolean("showCoreInfo", s.showCoreInfo)
+            .putBoolean("showMemoryInfo", s.showMemoryInfo)
             .apply()
     }
 

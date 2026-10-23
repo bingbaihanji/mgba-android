@@ -156,23 +156,10 @@ fun VideoSettingsScreen(
             SettingSection("着色器")
             ShaderSetting(config = shaderConfig, store = shaderStore)
 
-            SettingSection("调试浮层")
-            SettingSwitch(
-                title = "显示实时帧率",
-                subtitle = "游戏画面左上角显示仿真帧率、绘制帧率、帧耗时与丢帧数",
-                checked = settings.showFps,
-                onChange = { store.update { s -> s.copy(showFps = it) } },
-            )
-            SettingSwitch(
-                title = "显示变速状态",
-                subtitle = "在左上角浮层中显示当前倍速（快进橙色、慢放蓝色）",
-                checked = settings.showSpeedStatus,
-                onChange = { store.update { s -> s.copy(showSpeedStatus = it) } },
-            )
+            SettingSection("调试")
             Text(
-                text = "游戏 FPS 是核心每秒推进的 GBA 帧数（正常约 59.7）；" +
-                        "绘制 FPS 是实际绘制上屏的次数。两个开关共用左上角浮层，" +
-                        "使用不同颜色区分。",
+                text = "实时帧率、变速状态、着色器、分辨率、音频、ROM 与系统信息等" +
+                        "浮层开关已移到「设置 → 调试」，可按需组合显示。",
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,

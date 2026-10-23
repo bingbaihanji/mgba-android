@@ -33,8 +33,34 @@ data class AppSettings(
     val confirmOnClose: Boolean = true,
     val fullScreenMode: Boolean = true,
     val fullScreenImmersive: Boolean = true,
-    /** 调试：在游戏画面左上角显示实时帧率。 */
+    /** 调试浮层：显示实时帧率。 */
     val showFps: Boolean = false,
-    /** 调试：在帧率浮层中显示当前变速状态（与帧率使用不同颜色）。 */
+    /** 调试浮层：显示当前变速状态（与帧率使用不同颜色）。 */
     val showSpeedStatus: Boolean = false,
-)
+    /** 调试浮层：显示当前着色器。 */
+    val showShaderInfo: Boolean = false,
+    /** 调试浮层：显示游戏输出分辨率与屏幕分辨率/刷新率。 */
+    val showResolutionInfo: Boolean = false,
+    /** 调试浮层：显示音量。 */
+    val showVolumeInfo: Boolean = false,
+    /** 调试浮层：显示核心采样率。 */
+    val showSampleRateInfo: Boolean = false,
+    /** 调试浮层：显示 ROM 名称。 */
+    val showRomName: Boolean = false,
+    /** 调试浮层：显示 ROM 路径。 */
+    val showRomPath: Boolean = false,
+    /** 调试浮层：显示设备与系统版本。 */
+    val showSystemInfo: Boolean = false,
+    /** 调试浮层：显示核心名称、版本与帧率。 */
+    val showCoreInfo: Boolean = false,
+    /** 调试浮层：显示系统内存占用。 */
+    val showMemoryInfo: Boolean = false,
+) {
+
+    /** 是否有任意调试浮层项目开启；全部关闭时不组合浮层。 */
+    val hasDebugOverlay: Boolean
+        get() = showFps || showSpeedStatus || showShaderInfo ||
+                showResolutionInfo || showVolumeInfo || showSampleRateInfo ||
+                showRomName || showRomPath || showSystemInfo || showCoreInfo ||
+                showMemoryInfo
+}

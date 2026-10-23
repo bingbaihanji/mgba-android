@@ -14,6 +14,22 @@ class PerformanceStats {
     private val renderedFrames = AtomicLong()
     private val emulatedNanos = AtomicLong()
 
+    /** 最近一帧的游戏画面尺寸，由渲染线程在新帧上传时写入。 */
+    @Volatile
+    private var frameWidth = 0
+
+    @Volatile
+    private var frameHeight = 0
+
+    /** 记录核心输出的游戏画面尺寸。 */
+    fun recordFrameSize(width: Int, height: Int) {
+        frameWidth = width
+        frameHeight = height
+    }
+
+    /** 当前游戏画面尺寸；尚未拿到首帧时为 0×0。 */
+    fun frameSize(): FrameSize = FrameSize(frameWidth, frameHeight)
+
     /** 记录一次仿真帧推进；[durationNanos] 是该帧在核心内的耗时。 */
     fun recordEmulatedFrame(durationNanos: Long) {
         emulatedFrames.incrementAndGet()
@@ -37,4 +53,6 @@ class PerformanceStats {
         val renderedFrames: Long,
         val emulatedNanos: Long,
     )
+
+    data class FrameSize(val width: Int, val height: Int)
 }

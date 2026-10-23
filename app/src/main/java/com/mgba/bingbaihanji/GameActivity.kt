@@ -1,9 +1,12 @@
 package com.mgba.bingbaihanji
 
+import android.app.ActivityManager
 import android.app.AlertDialog
+import android.content.Context
 import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.view.KeyEvent
 import android.view.WindowManager
@@ -17,6 +20,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -33,6 +37,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
@@ -48,6 +53,7 @@ import com.mgba.bingbaihanji.core.settings.AppSettings
 import com.mgba.bingbaihanji.core.settings.ScreenOrientation
 import com.mgba.bingbaihanji.core.settings.SpeedPresets
 import com.mgba.bingbaihanji.core.storage.SavestateLoadResult
+import com.mgba.bingbaihanji.core.video.displayName
 import com.mgba.bingbaihanji.platform.android.audio.AudioTrackSink
 import com.mgba.bingbaihanji.platform.android.emulation.JniEmulatorCore
 import com.mgba.bingbaihanji.platform.android.storage.AndroidRomRepository
@@ -133,6 +139,13 @@ class GameActivity : ComponentActivity() {
     /** 按 ROM 保存的金手指存储。 */
     private val cheatStore by lazy { (application as MgbaApplication).cheatStore }
 
+    /** 调试浮层显示的应用版本号。 */
+    private val appVersionName: String by lazy {
+        runCatching {
+            packageManager.getPackageInfo(packageName, 0).versionName
+        }.getOrNull() ?: "未知"
+    }
+
     /**
      * 游戏页 Compose 根：统一主题，并向内嵌的设置页注入平台层实现。
      */
@@ -187,6 +200,7 @@ class GameActivity : ComponentActivity() {
                     GameTheme {
                         val gamepadLayout by layoutStore.layout.collectAsState()
                         val appSettings by settingsStore.settings.collectAsState()
+                        val shaderConfig by shaderStore.config.collectAsState()
                         val fullScreenPageOpen = layoutEditing || showCoreOptions || showCheats || showSettings
 
                         if (!loading && !menuOpen && !fullScreenPageOpen) {
@@ -347,15 +361,30 @@ class GameActivity : ComponentActivity() {
                             )
                         }
 
-                        val showDebugOverlay =
-                            appSettings.showFps || appSettings.showSpeedStatus
-                        if (showDebugOverlay && !fullScreenPageOpen && !loading) {
+                        if (appSettings.hasDebugOverlay && !fullScreenPageOpen && !loading) {
+                            val metrics = resources.displayMetrics
                             PerformanceOverlay(
                                 stats = gameSession.performance,
                                 droppedFrames = { gameSession.framesDropped },
-                                showFps = appSettings.showFps,
-                                showSpeedStatus = appSettings.showSpeedStatus,
-                                speed = appSettings.gameSpeed,
+                                settings = appSettings,
+                                shaderLabel = shaderConfig.displayName(),
+                                info = DebugOverlayInfo(
+                                    romName = romTitle,
+                                    romPath = gameSession.romPath,
+                                    coreName = gameSession.coreName,
+                                    coreVersion = gameSession.coreVersion,
+                                    coreFps = gameSession.avInfo.fps,
+                                    sampleRate = gameSession.avInfo.sampleRate.toInt(),
+                                    surfaceWidth = surfaceView.width.takeIf { it > 0 }
+                                        ?: metrics.widthPixels,
+                                    surfaceHeight = surfaceView.height.takeIf { it > 0 }
+                                        ?: metrics.heightPixels,
+                                    refreshRate = display?.refreshRate ?: 0f,
+                                    deviceLabel = "${Build.MANUFACTURER} ${Build.MODEL}",
+                                    androidLabel = "Android ${Build.VERSION.RELEASE}" +
+                                            "（API ${Build.VERSION.SDK_INT}）",
+                                    appVersion = appVersionName,
+                                ),
                             )
                         }
 
@@ -900,22 +929,44 @@ private data class PerformanceSample(
     val renderedFps: Double = 0.0,
     val frameMillis: Double = 0.0,
     val droppedPerSecond: Double = 0.0,
+    val gameWidth: Int = 0,
+    val gameHeight: Int = 0,
+    val availableGb: Double = 0.0,
+    val totalGb: Double = 0.0,
+)
+
+/** 调试浮层需要显示的静态信息，由游戏页在组合时提供。 */
+private data class DebugOverlayInfo(
+    val romName: String,
+    val romPath: String,
+    val coreName: String?,
+    val coreVersion: String?,
+    val coreFps: Double,
+    val sampleRate: Int,
+    val surfaceWidth: Int,
+    val surfaceHeight: Int,
+    val refreshRate: Float,
+    val deviceLabel: String,
+    val androidLabel: String,
+    val appVersion: String,
 )
 
 /**
- * 调试浮层：左上角显示仿真帧率、实际绘制帧率、核心每帧耗时与丢帧数。
+ * 调试浮层：左上角按开关绘制帧率、变速、着色器、分辨率、音频、ROM 与系统信息。
  *
  * “游戏 FPS”是核心真正推进的 GBA 帧数；“绘制 FPS”是实际绘制上屏的次数。
  * 两者明显不一致时，瓶颈通常在渲染（例如复杂着色器）或呈现刷新率。
+ * 每个分组使用独立颜色，便于同时开启时区分。
  */
 @Composable
 private fun PerformanceOverlay(
     stats: PerformanceStats,
     droppedFrames: () -> Long,
-    showFps: Boolean,
-    showSpeedStatus: Boolean,
-    speed: Float,
+    settings: AppSettings,
+    shaderLabel: String,
+    info: DebugOverlayInfo,
 ) {
+    val context = LocalContext.current
     var sample by remember { mutableStateOf(PerformanceSample()) }
 
     LaunchedEffect(stats) {
@@ -929,6 +980,8 @@ private fun PerformanceOverlay(
             val current = stats.counters()
             // 读取丢帧计数需要经过核心线程，放到 IO 上避免阻塞主线程。
             val droppedNow = withContext(Dispatchers.IO) { droppedFrames() }
+            val memory = withContext(Dispatchers.IO) { readMemoryGb(context) }
+            val frameSize = stats.frameSize()
             val elapsedNanos = (now - lastTime).coerceAtLeast(1L)
             val frames = current.emulatedFrames - last.emulatedFrames
             val rendered = current.renderedFrames - last.renderedFrames
@@ -940,6 +993,10 @@ private fun PerformanceOverlay(
                 frameMillis = if (frames > 0) emulatedNanos / 1_000_000.0 / frames else 0.0,
                 droppedPerSecond =
                     (droppedNow - lastDropped) * 1_000_000_000.0 / elapsedNanos,
+                gameWidth = frameSize.width,
+                gameHeight = frameSize.height,
+                availableGb = memory?.first ?: 0.0,
+                totalGb = memory?.second ?: 0.0,
             )
             last = current
             lastDropped = droppedNow
@@ -954,6 +1011,7 @@ private fun PerformanceOverlay(
         Column(
             modifier = Modifier
                 .padding(start = 12.dp, top = 12.dp)
+                .widthIn(max = 360.dp)
                 .background(
                     Color.Black.copy(alpha = 0.6f),
                     RoundedCornerShape(6.dp),
@@ -964,26 +1022,123 @@ private fun PerformanceOverlay(
                 fontFamily = FontFamily.Monospace,
                 color = Color(0xFF8CEB8C),
             )
-            if (showFps) {
+            if (settings.showFps) {
                 Text("游戏 ${"%.1f".format(sample.emulatedFps)} FPS", style = style)
                 Text("绘制 ${"%.1f".format(sample.renderedFps)} FPS", style = style)
                 Text("帧耗时 ${"%.2f".format(sample.frameMillis)} ms", style = style)
                 Text("掉帧 ${"%.1f".format(sample.droppedPerSecond)} /s", style = style)
             }
-            if (showSpeedStatus) {
+            if (settings.showSpeedStatus) {
                 // 与帧率的绿色区分：快进橙色、慢放蓝色、正常灰色。
                 val (speedColor, stateLabel) = when {
-                    speed > 1f -> Color(0xFFFFB74D) to "快进"
-                    speed < 1f -> Color(0xFF64B5F6) to "慢放"
+                    settings.gameSpeed > 1f -> Color(0xFFFFB74D) to "快进"
+                    settings.gameSpeed < 1f -> Color(0xFF64B5F6) to "慢放"
                     else -> Color(0xFFB0BEC5) to "正常"
                 }
                 Text(
-                    text = "速度 ${SpeedPresets.label(speed)} · $stateLabel",
+                    text = "速度 ${SpeedPresets.label(settings.gameSpeed)} · $stateLabel",
                     style = style.copy(color = speedColor),
+                )
+            }
+            if (settings.showShaderInfo) {
+                Text(
+                    text = "着色器 $shaderLabel",
+                    style = style.copy(color = Color(0xFF4DD0E1)),
+                )
+            }
+            if (settings.showResolutionInfo) {
+                val gameSize = if (sample.gameWidth > 0 && sample.gameHeight > 0) {
+                    "${sample.gameWidth}×${sample.gameHeight}"
+                } else {
+                    "未知"
+                }
+                val refresh = if (info.refreshRate > 0f) {
+                    "${"%.2f".format(info.refreshRate)} Hz"
+                } else {
+                    "未知"
+                }
+                Text(
+                    text = "游戏 $gameSize · 屏幕 ${info.surfaceWidth}×${info.surfaceHeight}",
+                    style = style.copy(color = Color(0xFF81C784)),
+                )
+                Text(
+                    text = "刷新率 $refresh",
+                    style = style.copy(color = Color(0xFF81C784)),
+                )
+            }
+            if (settings.showVolumeInfo) {
+                val volume = if (settings.enableSound) {
+                    "${settings.soundVolume}%"
+                } else {
+                    "静音"
+                }
+                Text(
+                    text = "音量 $volume",
+                    style = style.copy(color = Color(0xFFFFF176)),
+                )
+            }
+            if (settings.showSampleRateInfo) {
+                val rate = if (info.sampleRate > 0) "${info.sampleRate} Hz" else "未知"
+                Text(
+                    text = "采样率 $rate",
+                    style = style.copy(color = Color(0xFFFFCC80)),
+                )
+            }
+            if (settings.showRomName) {
+                Text(
+                    text = "ROM ${info.romName}",
+                    style = style.copy(color = Color(0xFF90CAF9)),
+                )
+            }
+            if (settings.showRomPath) {
+                Text(
+                    text = "路径 ${info.romPath}",
+                    style = style.copy(color = Color(0xFF9FA8DA)),
+                )
+            }
+            if (settings.showSystemInfo) {
+                Text(
+                    text = "系统 ${info.deviceLabel}",
+                    style = style.copy(color = Color(0xFFF48FB1)),
+                )
+                Text(
+                    text = "${info.androidLabel} · 应用 ${info.appVersion}",
+                    style = style.copy(color = Color(0xFFF48FB1)),
+                )
+            }
+            if (settings.showCoreInfo) {
+                val core = listOfNotNull(info.coreName, info.coreVersion)
+                    .joinToString(" ")
+                    .ifBlank { "mGBA（libretro）" }
+                val fps = if (info.coreFps > 0) {
+                    "${"%.2f".format(info.coreFps)} Hz"
+                } else {
+                    "未知"
+                }
+                Text(
+                    text = "核心 $core · $fps",
+                    style = style.copy(color = Color(0xFFB39DDB)),
+                )
+            }
+            if (settings.showMemoryInfo) {
+                Text(
+                    text = "内存 ${"%.1f".format(sample.availableGb)} / " +
+                            "${"%.1f".format(sample.totalGb)} GB",
+                    style = style.copy(color = Color(0xFF80CBC4)),
                 )
             }
         }
     }
+}
+
+/** 读取系统可用内存与总内存（GB）。 */
+private fun readMemoryGb(context: Context): Pair<Double, Double>? {
+    val manager = context.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
+        ?: return null
+    val info = ActivityManager.MemoryInfo()
+    manager.getMemoryInfo(info)
+    val gb = 1024.0 * 1024.0 * 1024.0
+    return info.availMem / gb to info.totalMem / gb
 }
 
 /** ROM 加载遮罩：覆盖游戏画面，避免加载期间只看到空白 Surface。 */

@@ -27,6 +27,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.unit.dp
 import com.mgba.bingbaihanji.core.settings.SpeedPresets
+import com.mgba.bingbaihanji.core.video.displayName
 import java.io.File
 import java.util.Locale
 import kotlin.math.roundToInt
@@ -178,6 +179,134 @@ fun MiscSettingsScreen(onBack: () -> Unit) {
             title = "关闭确认",
             checked = settings.confirmOnClose,
             onChange = { store.update { s -> s.copy(confirmOnClose = it) } },
+        )
+    }
+}
+
+/**
+ * 调试页：按「视频 / 音频 / ROM 信息 / 系统信息 / 其他」分组，
+ * 每个开关控制游戏画面左上角浮层中的一行数据。
+ *
+ * 浮层只在加载 ROM 后绘制，与实时帧率的显示逻辑一致。
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun DebugSettingsScreen(
+    onBack: () -> Unit,
+    romInfo: RomInfoUi? = null,
+) {
+    val store = LocalSettingsStore.current
+    val settings by store.settings.collectAsState()
+    val shaderStore = LocalShaderStore.current
+    val shaderConfig by shaderStore.config.collectAsState()
+    val context = LocalContext.current
+    val metrics = context.resources.displayMetrics
+    val refreshRate = context.display?.refreshRate
+
+    SettingsScaffold("调试", onBack) {
+        Text(
+            text = "以下开关只影响游戏画面左上角的调试浮层。开启后，加载 ROM " +
+                    "时会绘制对应数据，和实时帧率的显示逻辑一致。",
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+
+        SettingSection("视频")
+        SettingSwitch(
+            title = "显示实时帧率",
+            subtitle = "游戏 FPS、绘制 FPS、帧耗时与丢帧/秒",
+            checked = settings.showFps,
+            onChange = { store.update { s -> s.copy(showFps = it) } },
+        )
+        SettingSwitch(
+            title = "显示变速状态",
+            subtitle = "当前倍速（快进橙色、慢放蓝色、正常灰色）",
+            checked = settings.showSpeedStatus,
+            onChange = { store.update { s -> s.copy(showSpeedStatus = it) } },
+        )
+        SettingSwitch(
+            title = "显示着色器",
+            subtitle = "当前着色器：${shaderConfig.displayName()}",
+            checked = settings.showShaderInfo,
+            onChange = { store.update { s -> s.copy(showShaderInfo = it) } },
+        )
+        SettingSwitch(
+            title = "显示分辨率",
+            subtitle = "游戏输出分辨率与屏幕 " +
+                    "${metrics.widthPixels} × ${metrics.heightPixels} px" +
+                    (refreshRate?.let {
+                        String.format(Locale.ROOT, " @ %.2f Hz", it)
+                    } ?: ""),
+            checked = settings.showResolutionInfo,
+            onChange = { store.update { s -> s.copy(showResolutionInfo = it) } },
+        )
+
+        SettingSection("音频")
+        SettingSwitch(
+            title = "显示音量",
+            subtitle = if (settings.enableSound) {
+                "当前音量 ${settings.soundVolume}%"
+            } else {
+                "声音已关闭（浮层显示为静音）"
+            },
+            checked = settings.showVolumeInfo,
+            onChange = { store.update { s -> s.copy(showVolumeInfo = it) } },
+        )
+        SettingSwitch(
+            title = "显示采样率",
+            subtitle = romInfo?.takeIf { it.sampleRate > 0 }?.let {
+                "核心输出 ${it.sampleRate} Hz"
+            } ?: "启动游戏后显示核心输出采样率",
+            checked = settings.showSampleRateInfo,
+            onChange = { store.update { s -> s.copy(showSampleRateInfo = it) } },
+        )
+
+        SettingSection("ROM 信息")
+        SettingSwitch(
+            title = "显示 ROM 名称",
+            subtitle = romInfo?.title?.ifBlank { null } ?: "启动游戏后显示",
+            checked = settings.showRomName,
+            onChange = { store.update { s -> s.copy(showRomName = it) } },
+        )
+        SettingSwitch(
+            title = "显示 ROM 路径",
+            subtitle = romInfo?.path?.ifBlank { null } ?: "启动游戏后显示",
+            checked = settings.showRomPath,
+            onChange = { store.update { s -> s.copy(showRomPath = it) } },
+        )
+
+        SettingSection("系统信息")
+        SettingSwitch(
+            title = "显示系统信息",
+            subtitle = "${Build.MANUFACTURER} ${Build.MODEL} · " +
+                    "Android ${Build.VERSION.RELEASE} · 应用 ${appVersion(context)}",
+            checked = settings.showSystemInfo,
+            onChange = { store.update { s -> s.copy(showSystemInfo = it) } },
+        )
+        SettingSwitch(
+            title = "显示核心信息",
+            subtitle = romInfo?.let {
+                listOfNotNull(it.coreName, it.coreVersion)
+                    .joinToString(" ")
+                    .ifBlank { "mGBA（libretro）" }
+            } ?: "启动游戏后显示核心名称与版本",
+            checked = settings.showCoreInfo,
+            onChange = { store.update { s -> s.copy(showCoreInfo = it) } },
+        )
+
+        SettingSection("其他")
+        SettingSwitch(
+            title = "显示内存",
+            subtitle = "系统可用内存 / 总内存",
+            checked = settings.showMemoryInfo,
+            onChange = { store.update { s -> s.copy(showMemoryInfo = it) } },
+        )
+        Text(
+            text = "浮层项目可以任意组合；全部关闭时不会绘制浮层，额外开销为零。",
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }

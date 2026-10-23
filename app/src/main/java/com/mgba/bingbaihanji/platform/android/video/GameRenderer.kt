@@ -173,6 +173,8 @@ class GameRenderer(
                 frameHeight = frame.height
                 frameFormat = frame.format
                 hasFrame = true
+                // 调试浮层用它显示游戏输出分辨率。
+                stats.recordFrameSize(frame.width, frame.height)
             }
             frameSource.releaseFrame()
         }

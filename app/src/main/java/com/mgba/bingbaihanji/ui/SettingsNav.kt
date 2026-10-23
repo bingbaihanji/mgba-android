@@ -49,6 +49,10 @@ fun SettingsNav(
             romInfo = romInfo,
         )
         SettingsCategory.Misc -> MiscSettingsScreen(onBack = { category = null })
+        SettingsCategory.Debug -> DebugSettingsScreen(
+            onBack = { category = null },
+            romInfo = romInfo,
+        )
         SettingsCategory.About -> AboutScreen(onBack = { category = null })
     }
 }

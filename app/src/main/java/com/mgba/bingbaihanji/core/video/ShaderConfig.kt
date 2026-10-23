@@ -12,3 +12,12 @@ data class ShaderConfig(
     val source: String = "",
     val name: String = "",
 )
+
+/** 设置页与调试浮层共用的显示名称。 */
+fun ShaderConfig.displayName(): String = when (preset) {
+    ShaderPreset.Off -> "关闭"
+    ShaderPreset.Lcd -> "LCD 网格"
+    ShaderPreset.Scanlines -> "扫描线"
+    ShaderPreset.Dot -> "点阵"
+    ShaderPreset.Custom -> name.ifBlank { "自定义 GLSL" }
+}
