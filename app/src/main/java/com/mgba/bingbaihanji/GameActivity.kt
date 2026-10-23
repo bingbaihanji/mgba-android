@@ -21,7 +21,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -1008,15 +1007,11 @@ private fun PerformanceOverlay(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.TopStart,
     ) {
+        // 调试数据直接绘制在游戏画面上，不使用任何背景板。
         Column(
             modifier = Modifier
                 .padding(start = 12.dp, top = 12.dp)
-                .widthIn(max = 360.dp)
-                .background(
-                    Color.Black.copy(alpha = 0.6f),
-                    RoundedCornerShape(6.dp),
-                )
-                .padding(horizontal = 8.dp, vertical = 6.dp),
+                .widthIn(max = 360.dp),
         ) {
             val style = MaterialTheme.typography.labelSmall.copy(
                 fontFamily = FontFamily.Monospace,
