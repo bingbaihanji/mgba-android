@@ -1,0 +1,31 @@
+# Gradle / Android build output
+.gradle/
+build/
+.kotlin/
+.cxx/
+captures/
+local.properties
+keystore.properties
+
+# IDE
+.idea/
+*.iml
+
+# Logs and crash dumps
+*.log
+*.hprof
+*.apk
+*.aab
+releases/
+
+# Reference material kept locally, not part of the app build
+mgba-source/
+resource/
+.xcodemap/
+docs/superpowers/
+mGBA Android 优化实施计划.md
+
+# OS metadata
+.DS_Store
+Thumbs.db
+desktop.ini
